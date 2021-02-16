@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty } from "class-validator";
+import { IsEmail, isNotEmpty, IsNotEmpty } from "class-validator";
 import { Entity, PrimaryGeneratedColumn, Column, Unique, CreateDateColumn, UpdateDateColumn } from "typeorm";
 import * as bcrypt from "bcryptjs";
 
@@ -9,17 +9,36 @@ export class User {
   id: number;
 
   @Column()
+  @IsNotEmpty()
+  dni: string;
+
+  @Column()
+  @IsNotEmpty()
+  name: string;
+
+  @Column()
+  @IsNotEmpty()
+  surname: string;
+
+  @Column()
   @IsEmail()
   @IsNotEmpty()
   email: string;
 
   @Column()
-  @IsNotEmpty()
-  password: string;
+  phone: string;
 
   @Column()
   @IsNotEmpty()
-  role: string;
+  password: string;
+
+  @Column("text")
+  @IsNotEmpty()
+  gender: Gender;
+
+  @Column()
+  @IsNotEmpty()
+  birthday: Date;
 
   @Column()
   @CreateDateColumn()
@@ -37,4 +56,9 @@ export class User {
   checkPassword(password: string): boolean {
     return bcrypt.compareSync(password, this.password);
   }
+}
+
+enum Gender {
+  Male = "Masculino",
+  Female = "Femenino",
 }
