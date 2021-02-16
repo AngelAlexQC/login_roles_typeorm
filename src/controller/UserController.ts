@@ -2,15 +2,17 @@ import { getRepository } from "typeorm";
 import { Request, Response } from "express";
 import { User } from "../entity/User";
 import { validate } from "class-validator";
+import lang from "../lang/lang.es";
+import { ApiResponser } from "../helpers/ApiResponser";
 
 export class UserController {
   static getAll = async (req: Request, res: Response) => {
     const repository = getRepository(User);
     const users = await repository.find();
     if (users.length > 0) {
-      res.send(users);
+      return ApiResponser.successResponse(req, res, { code: 200, messages: [lang.SUCCESS], data: users });
     } else {
-      res.status(400).json({ message: "Sin Resultados" });
+      return ApiResponser.errorResponse(req, res, { code: 404, messages: [lang.NO_RECORDS] });
     }
   };
 
@@ -19,14 +21,13 @@ export class UserController {
     const { id } = req.params;
     try {
       const user = await repository.findOneOrFail(id);
-      res.send(user);
+      return ApiResponser.successResponse(req, res, { code: 200, messages: [lang.SUCCESS], data: user });
     } catch (error) {
-      res.status(404).json({ message: "Not Found" });
+      return ApiResponser.errorResponse(req, res, { code: 404, messages: [lang.NO_RECORDS] });
     }
   };
 
   static create = async (req: Request, res: Response) => {
-    const repository = getRepository(User);
     const { email, password, role } = req.body;
     const user = new User();
     user.email = email;
@@ -34,19 +35,27 @@ export class UserController {
     user.role = role;
 
     // Validate
-    const errors = await validate(user);
+    const validationOptions = { validationError: { target: false, value: false } };
+    const errors = await validate(user, validationOptions);
     if (errors.length > 0) {
-      return res.status(400).json(errors);
+      return ApiResponser.errorResponse(req, res, {
+        code: 422,
+        errors: errors.map((error) => {
+          return error.toString();
+        }),
+        messages: [lang.VALIDATION_ERROR],
+      });
     }
-    // TODO: Hash Password
-
+    // Hash Password
+    const userRepository = getRepository(User);
     try {
-      await repository.save(user);
-    } catch (error) {
-      return res.status(409).json({ message: "Email already exist" });
+      user.hashPassword();
+      await userRepository.save(user);
+    } catch (e) {
+      return ApiResponser.errorResponse(req, res, { code: 409, messages: [lang.EMAIL_ALREADY_IN_USE] });
     }
     // All OK
-    res.send("User Created!");
+    return ApiResponser.successResponse(req, res, { code: 201, messages: [lang.SUCCESS] });
   };
 
   static update = async (req: Request, res: Response) => {
@@ -58,22 +67,29 @@ export class UserController {
     try {
       user = await repository.findOneOrFail(id);
     } catch (error) {
-      return res.status(404).json({ message: "User not found" });
+      return ApiResponser.errorResponse(req, res, { code: 404, messages: [lang.NO_RECORDS] });
     }
     user.email = email;
     user.role = role;
 
-    const errors = await validate(user);
+    const validationOptions = { validationError: { target: false, value: false } };
+    const errors = await validate(user, validationOptions);
     if (errors.length > 0) {
-      return res.status(400).json(errors);
+      return ApiResponser.errorResponse(req, res, {
+        code: 422,
+        errors: errors.map((error) => {
+          return error.toString();
+        }),
+        messages: [lang.VALIDATION_ERROR],
+      });
     }
     // Try to save User
     try {
       await repository.save(user);
     } catch (error) {
-      return res.status(409).json({ message: "Email already in use!" });
+      return res.status(409).json({ message: lang.EMAIL_ALREADY_IN_USE });
     }
-    return res.json({ message: "User Updated!" });
+    return ApiResponser.successResponse(req, res, { code: 204, messages: [lang.SUCCESS] });
   };
 
   static delete = async (req: Request, res: Response) => {
@@ -81,11 +97,11 @@ export class UserController {
     const { id } = req.params;
     try {
     } catch (error) {
-      return res.status(404).json({ message: "User not found" });
+      return ApiResponser.errorResponse(req, res, { code: 404, messages: [lang.NO_RECORDS] });
     }
     // Remove User
     repository.delete(id);
-    return res.status(201).json({ message: "User deleted" });
+    return ApiResponser.successResponse(req, res, { code: 200, messages: [lang.SUCCESS] });
   };
 }
 export default UserController;
