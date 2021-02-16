@@ -1,18 +1,40 @@
-import {Entity, PrimaryGeneratedColumn, Column} from "typeorm";
+import { IsEmail, IsNotEmpty } from "class-validator";
+import { Entity, PrimaryGeneratedColumn, Column, Unique, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import * as bcrypt from "bcryptjs";
 
 @Entity()
+@Unique(["email"])
 export class User {
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @PrimaryGeneratedColumn()
-    id: number;
+  @Column()
+  @IsEmail()
+  @IsNotEmpty()
+  email: string;
 
-    @Column()
-    firstName: string;
+  @Column()
+  @IsNotEmpty()
+  password: string;
 
-    @Column()
-    lastName: string;
+  @Column()
+  @IsNotEmpty()
+  role: string;
 
-    @Column()
-    age: number;
+  @Column()
+  @CreateDateColumn()
+  createdAt: Date;
 
+  @Column()
+  @UpdateDateColumn()
+  updatedAt: Date;
+
+  hashPassword(): void {
+    const salt = bcrypt.genSaltSync(10);
+    this.password = bcrypt.hashSync(this.password, salt);
+  }
+
+  checkPassword(password: string): boolean {
+    return bcrypt.compareSync(password, this.password);
+  }
 }
